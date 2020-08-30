@@ -1,0 +1,75 @@
+@startuml
+participant HandlerRequest
+participant BufferedReader
+participant PrintWriter
+participant 请求行
+participant StringBuilder
+HandlerRequest -> BufferedReader : br = new BufferedReader(\n           new InputStreamReader(\n clientSocket.getInputStream()));
+note left
+从clientSocket获取请求的输入流
+end note
+HandlerRequest -> PrintWriter : out = new PrintWriter(clientSocket.getOutputStream());
+note left
+从clientSocket获得响应的输出流
+end note
+HandlerRequest -> 请求行:从请求输入流获取请求行，并对其进行解析，从而获得requestURI
+
+alt requestURI.endsWith(".html")请求的是静态资源
+HandlerRequest -> BufferedReader : new BufferedReader(new FileReader(htmlPath));
+note left
+从应用程序获取静态资源的输入流
+end note
+HandlerRequest -> StringBuilder:StringBuilder html = new StringBuilder();\n//拼接响应信息（响应头等）\nhtml.append("HTTP/1.1 200 OK\\n");\nhtml.append("Content-Type:text/html;charset-utf-8\\n\\n");
+note left
+拼接响应信息和
+静态资源（即响应主体，此处略）
+end note
+HandlerRequest -> PrintWriter :out.print(html);
+
+
+
+else 请求的是动态资源
+HandlerRequest -> requestURI: 解析URI
+note left :根据webAppName获取Map<url-pattern,servlet-class>\n并且根据url-pattern获取servlet-class
+HandlerRequest -> RequestObject : new RequestObject(requestURI)
+note left
+封装与请求有关的资源进RequestObject
+在RequestObject的构造方法里解析URI，
+并封装GET请求参数Map<参数名，参数值>
+end note
+HandlerRequest -> ResponseObject : new ResponseObject();responseObject.setWriter(out);
+
+note left
+封装与请求有关的资源进ResponseObject
+此处仅封装了响应输出流对象
+end note
+
+HandlerRequest ->PrintWriter :out.print("HTTP/1.1 200 OK\\n");\nout.print("Content-Type:text/html;charset=utf-8\\n\\n");
+note left: 输出流输出一些响应头信息
+
+alt 缓存池里有servlet
+
+HandlerRequest -> ServletCache : get(urlPattern)
+note left
+直接从缓存池里获取
+end note
+
+else 缓存池里没有servlet
+
+note left HandlerRequest: 反射创建Servlet
+note right HandlerRequest:Class c = Class.forName(servletClassName);\nservlet = (Servlet) c.newInstance();
+HandlerRequest -> ServletCache : ServletCache.put(urlPattern,servlet);
+note left : 把servlet缓存进缓存池
+
+end
+HandlerRequest -> Servlet : servlet.service(RequestObject,ResponseObject)
+note left
+调用Servlet规范的service()，此方法由应用程序开发人员实现
+end note
+
+
+end
+
+
+
+@enduml

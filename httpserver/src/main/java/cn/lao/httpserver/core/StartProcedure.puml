@@ -1,0 +1,38 @@
+@startuml
+participant Bootstrap
+participant ServerParser
+participant WebParser
+participant ServerSocket
+participant HandlerRequest
+
+note over Bootstrap: main()
+
+Bootstrap -> ServerParser : getPort()
+note left
+解析server.xml
+获取到端口号
+end note
+
+Bootstrap -> WebParser : parser()
+note left
+解析web.xml
+最终得到一个成员变量
+Map<
+    webAppName,
+    Map<url-pattern,servlet-class>
+    >
+end note
+
+Bootstrap -> ServerSocket : accept()
+note left
+开始监听，接收客户端消息
+返回clientSocket
+end note
+
+Bootstrap -> HandlerRequest : new Thread(new HandlerRequest(clientSocket)).start();
+note left
+每个请求新建一个线程来处理
+end note
+
+
+@enduml
